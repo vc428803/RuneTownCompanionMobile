@@ -10,6 +10,8 @@ type FieldProps = {
   onChangeText: (value: string) => void;
   placeholder: string;
   multiline?: boolean;
+  required?: boolean;
+  preserveCase?: boolean;
 };
 
 function Field({
@@ -18,13 +20,19 @@ function Field({
   onChangeText,
   placeholder,
   multiline = false,
+  required = false,
+  preserveCase = false,
 }: FieldProps) {
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>
+        {label}
+        {required ? " *" : ""}
+      </Text>
       <TextInput
         accessibilityLabel={label}
-        autoCapitalize="sentences"
+        autoCapitalize={preserveCase ? "none" : "sentences"}
+        autoCorrect={!preserveCase}
         multiline={multiline}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -90,8 +98,6 @@ export default function SubmitEvidenceScreen() {
 
   return (
     <Screen
-      title="提交 Evidence"
-      subtitle="提供足以支持此 Criterion 的文字資料。"
       footer={
         <PrimaryButton
           disabled={isSubmitting}
@@ -102,22 +108,25 @@ export default function SubmitEvidenceScreen() {
     >
       <View style={styles.form}>
         <Field
-          label="title"
+          label="標題"
           onChangeText={setTitle}
           placeholder="輸入 Evidence 標題"
+          required
           value={title}
         />
         <Field
-          label="description"
+          label="描述"
           multiline
           onChangeText={setDescription}
           placeholder="描述這筆 Evidence 如何滿足 Criterion"
+          required
           value={description}
         />
         <Field
-          label="source"
+          label="來源"
           onChangeText={setSource}
           placeholder="輸入來源文字或網址"
+          preserveCase
           value={source}
         />
       </View>

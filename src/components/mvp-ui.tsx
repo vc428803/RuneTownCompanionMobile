@@ -30,7 +30,7 @@ export const colors = {
 } as const;
 
 type ScreenProps = PropsWithChildren<{
-  title: string;
+  title?: string;
   subtitle?: string;
   footer?: ReactNode;
 }>;
@@ -67,12 +67,16 @@ export function Screen({ title, subtitle, children, footer }: ScreenProps) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          <View style={styles.heading}>
-            <Text accessibilityRole="header" style={styles.pageTitle}>
-              {title}
-            </Text>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-          </View>
+          {title || subtitle ? (
+            <View style={styles.heading}>
+              {title ? (
+                <Text accessibilityRole="header" style={styles.pageTitle}>
+                  {title}
+                </Text>
+              ) : null}
+              {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            </View>
+          ) : null}
           {children}
         </View>
       </ScrollView>

@@ -56,8 +56,6 @@ export default function SubmitResultScreen() {
 
   return (
     <Screen
-      title={wasAccepted ? "提交成功" : "Evidence 未通過"}
-      subtitle="Evidence 驗證結果已更新。"
       footer={
         <PrimaryButton
           label={wasAccepted ? "返回 Goal 詳情" : "重新提交 Evidence"}
@@ -74,7 +72,12 @@ export default function SubmitResultScreen() {
         />
       }
     >
-      <View style={styles.resultHero}>
+      <View
+        style={[
+          styles.resultHero,
+          wasAccepted ? styles.successHero : styles.rejectedHero,
+        ]}
+      >
         <View
           style={[
             styles.resultIcon,
@@ -116,7 +119,15 @@ const styles = StyleSheet.create({
   resultHero: {
     alignItems: "center",
     gap: 10,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderRadius: 16,
+  },
+  successHero: {
+    backgroundColor: "#F0FDF4",
+  },
+  rejectedHero: {
+    backgroundColor: "#FEF2F2",
   },
   resultIcon: {
     width: 72,

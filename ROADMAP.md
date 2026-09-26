@@ -22,7 +22,9 @@
 - Android production bundle export succeeds.
 - The checked-in frontend contract matches the supplied API contract.
 
-### Runtime follow-up
+### Runtime verification completed
 
-- Restart the Spring Boot backend before end-to-end verification. The process that was listening on port 8080 was started before the three GET endpoints were added and returned `404` for `GET /api/goals`.
-- After restart, verify Goal list, Goal detail, Criterion detail, accepted Evidence, and rejected Evidence flows against the seeded `goal-demo` / `criterion-demo` data.
+- Verified the Android Emulator through ADB reverse using API base URL `http://127.0.0.1:8080`.
+- Verified Goal list, Goal detail, nullable Supporting Evidence, accepted Evidence (`200`), rejected Evidence (`422`), missing resources (`404`), duplicate Evidence (`409`), and network failure handling.
+- Verified Metro on port `8081` and the Spring Boot API on port `8080`.
+- Aligned the five Mobile MVP screens with UI Flow v0.3 without adding unsupported Goal creation, Collection, Profile, Milestone, or AI features.

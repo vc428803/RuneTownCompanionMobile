@@ -5,13 +5,13 @@ import {
   LabelValue,
   LoadingState,
   MessageState,
-  PrimaryLink,
+  PrimaryButton,
   Screen,
   SectionHeader,
   StatusBadge,
 } from "@/components/mvp-ui";
 import { useApiResource } from "@/hooks/use-api-resource";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -66,12 +66,14 @@ export default function CriterionDetailScreen() {
       subtitle="CompletionCriterion 詳情"
       footer={
         !criterion.completed ? (
-          <PrimaryLink
-            href={{
-              pathname: "/submit-evidence",
-              params: { goalId, criterionId },
-            }}
+          <PrimaryButton
             label="提交 Evidence"
+            onPress={() =>
+              router.push({
+                pathname: "/submit-evidence",
+                params: { goalId, criterionId },
+              })
+            }
           />
         ) : undefined
       }

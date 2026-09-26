@@ -12,7 +12,7 @@ import {
 } from "@/components/mvp-ui";
 import { useApiResource } from "@/hooks/use-api-resource";
 import { statusPresentation } from "@/utils/goal-status";
-import { Link, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -54,89 +54,102 @@ export default function GoalDetailScreen() {
   const completedCount = goal.criteria.filter(
     (criterion) => criterion.completed,
   ).length;
+  const percentage =
+    goal.criteria.length > 0
+      ? Math.round((completedCount / goal.criteria.length) * 100)
+      : 0;
   const status = statusPresentation(goal.goalStatus);
 
   return (
-    <Screen title={goal.title} subtitle="目標詳情與完成條件">
+    <Screen>
       {error ? (
         <Text style={styles.refreshError}>更新失敗，正在顯示上次載入的資料。</Text>
       ) : null}
       <Card>
-        <View style={styles.summaryTopRow}>
-          <LabelValue label="LifeArchetype" value={goal.lifeArchetype} />
-          <StatusBadge label={status.label} tone={status.tone} />
+        <View style={styles.heroRow}>
+          <View style={styles.goalIcon}>
+            <Text style={styles.goalIconText}>
+              {goal.title.trim().charAt(0).toUpperCase() || "G"}
+            </Text>
+          </View>
+          <View style={styles.heroCopy}>
+            <Text style={styles.goalTitle}>{goal.title}</Text>
+            <Text style={styles.archetype}>{goal.lifeArchetype}</Text>
+          </View>
         </View>
         <View style={styles.progressCopy}>
-          <Text style={styles.progressLabel}>Criterion 完成數量</Text>
+          <Text style={styles.progressLabel}>
+            {completedCount} / {goal.criteria.length} Criteria
+          </Text>
           <Text style={styles.progressCount}>
-            {completedCount} / {goal.criteria.length}
+            {percentage}%
           </Text>
         </View>
         <ProgressBar completed={completedCount} total={goal.criteria.length} />
-        <LabelValue label="GoalStatus" value={goal.goalStatus} />
+        <View style={styles.statusPanel}>
+          <LabelValue label="狀態" value={goal.goalStatus} />
+          <StatusBadge label={status.label} tone={status.tone} />
+        </View>
       </Card>
 
       <View style={styles.criteriaSection}>
         <SectionHeader
-          title="CompletionCriterion"
-          detail={`${goal.criteria.length} 個條件`}
+          title={`Criteria (${goal.criteria.length})`}
         />
         {goal.criteria.length === 0 ? (
           <MessageState message="此 Goal 尚未設定條件。" title="尚無 Criterion" />
         ) : (
           <View style={styles.criteriaList}>
             {goal.criteria.map((criterion, index) => (
-              <Link
-                href={{
-                  pathname: "/criterion-detail",
-                  params: {
-                    goalId: goal.goalId,
-                    criterionId: criterion.criterionId,
-                  },
-                }}
-                asChild
+              <Pressable
+                accessibilityHint="開啟條件詳情"
+                accessibilityRole="button"
                 key={criterion.criterionId}
+                onPress={() =>
+                  router.push({
+                    pathname: "/criterion-detail",
+                    params: {
+                      goalId: goal.goalId,
+                      criterionId: criterion.criterionId,
+                    },
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.criterionRow,
+                  pressed && styles.criterionRowPressed,
+                ]}
               >
-                <Pressable
-                  accessibilityHint="開啟條件詳情"
-                  accessibilityRole="button"
-                  style={({ pressed }) => [
-                    styles.criterionRow,
-                    pressed && styles.criterionRowPressed,
+                <View
+                  style={[
+                    styles.criterionIcon,
+                    criterion.completed && styles.criterionIconComplete,
                   ]}
                 >
-                  <View
+                  <Text
                     style={[
-                      styles.criterionIcon,
-                      criterion.completed && styles.criterionIconComplete,
+                      styles.criterionIconText,
+                      criterion.completed && styles.criterionIconTextComplete,
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.criterionIconText,
-                        criterion.completed && styles.criterionIconTextComplete,
-                      ]}
-                    >
-                      {criterion.completed ? "✓" : index + 1}
-                    </Text>
-                  </View>
-                  <View style={styles.criterionCopy}>
-                    <Text style={styles.criterionDescription}>
-                      {criterion.description}
-                    </Text>
-                    <Text
-                      style={
-                        criterion.completed
-                          ? styles.completeText
-                          : styles.inProgressText
-                      }
-                    >
-                      {criterion.completed ? "Completed" : "In progress"}
-                    </Text>
-                  </View>
-                  <Text style={styles.chevron}>›</Text>
-                </Pressable>
-              </Link>
+                    {criterion.completed ? "✓" : index + 1}
+                  </Text>
+                </View>
+                <View style={styles.criterionCopy}>
+                  <Text style={styles.criterionDescription}>
+                    {criterion.description}
+                  </Text>
+                  <Text
+                    style={
+                      criterion.completed
+                        ? styles.completeText
+                        : styles.inProgressText
+                    }
+                  >
+                    {criterion.completed ? "已完成" : "尚未完成"}
+                  </Text>
+                </View>
+                <Text style={styles.chevron}>›</Text>
+              </Pressable>
             ))}
           </View>
         )}
@@ -151,11 +164,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
   },
-  summaryTopRow: {
+  heroRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 16,
+    alignItems: "center",
+    gap: 14,
+  },
+  goalIcon: {
+    width: 52,
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    backgroundColor: "#DBEAFE",
+  },
+  goalIconText: {
+    color: colors.primary,
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  heroCopy: {
+    flex: 1,
+    gap: 5,
+  },
+  goalTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: "700",
+    lineHeight: 27,
+  },
+  archetype: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: "600",
   },
   progressCopy: {
     flexDirection: "row",
@@ -170,6 +210,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 14,
     fontWeight: "700",
+  },
+  statusPanel: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#EFF6FF",
   },
   criteriaSection: {
     gap: 14,

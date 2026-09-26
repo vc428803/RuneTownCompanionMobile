@@ -46,6 +46,12 @@ export default function GoalsListScreen() {
           ) : null}
           {goals.map((goal) => {
             const status = statusPresentation(goal.goalStatus);
+            const percentage =
+              goal.totalCriteriaCount > 0
+                ? Math.round(
+                    (goal.completedCriteriaCount / goal.totalCriteriaCount) * 100,
+                  )
+                : 0;
 
             return (
               <Link
@@ -65,14 +71,23 @@ export default function GoalsListScreen() {
                   ]}
                 >
                   <View style={styles.cardTopRow}>
-                    <StatusBadge label={status.label} tone={status.tone} />
+                    <View style={styles.goalIcon}>
+                      <Text style={styles.goalIconText}>
+                        {goal.title.trim().charAt(0).toUpperCase() || "G"}
+                      </Text>
+                    </View>
+                    <View style={styles.goalCopy}>
+                      <Text style={styles.goalTitle}>{goal.title}</Text>
+                      <StatusBadge label={status.label} tone={status.tone} />
+                    </View>
                     <Text style={styles.chevron}>›</Text>
                   </View>
-                  <Text style={styles.goalTitle}>{goal.title}</Text>
                   <View style={styles.progressCopy}>
-                    <Text style={styles.progressLabel}>完成條件</Text>
+                    <Text style={styles.progressLabel}>
+                      {goal.completedCriteriaCount} / {goal.totalCriteriaCount} Criteria
+                    </Text>
                     <Text style={styles.progressCount}>
-                      {goal.completedCriteriaCount} / {goal.totalCriteriaCount}
+                      {percentage}%
                     </Text>
                   </View>
                   <ProgressBar
@@ -99,9 +114,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   goalCard: {
-    minHeight: 180,
-    gap: 16,
-    padding: 18,
+    minHeight: 148,
+    gap: 14,
+    padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 16,
@@ -119,8 +134,25 @@ const styles = StyleSheet.create({
   cardTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: 12,
+  },
+  goalIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 13,
+    backgroundColor: "#DBEAFE",
+  },
+  goalIconText: {
+    color: colors.primary,
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  goalCopy: {
+    flex: 1,
+    alignItems: "flex-start",
+    gap: 8,
   },
   chevron: {
     color: colors.textMuted,
@@ -129,9 +161,9 @@ const styles = StyleSheet.create({
   },
   goalTitle: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: "700",
-    lineHeight: 28,
+    lineHeight: 23,
   },
   progressCopy: {
     flexDirection: "row",

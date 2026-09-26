@@ -25,12 +25,22 @@ Set `EXPO_PUBLIC_API_BASE_URL` when the default URL is not reachable:
 cp .env.example .env.local
 ```
 
-- Android Emulator defaults to `http://10.0.2.2:8080`.
-- iOS Simulator and web default to `http://localhost:8080`.
+- Android development defaults to `http://127.0.0.1:8080` and expects
+  `adb reverse tcp:8080 tcp:8080`.
+- Without ADB reverse, set Android Emulator to `http://10.0.2.2:8080`.
+- iOS Simulator and web can override the URL with `http://localhost:8080`.
 - A physical device must use the computer's LAN address, for example
   `http://192.168.1.107:8080`.
 
 Restart or reload Expo after changing the environment variable.
+
+Metro keeps its default port `8081`. If ADB reverse is reset, restore both
+development forwards:
+
+```bash
+adb reverse tcp:8080 tcp:8080
+adb reverse tcp:8081 tcp:8081
+```
 
 In the output, you'll find options to open the app in a
 
