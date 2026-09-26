@@ -1,17 +1,18 @@
-import { Text, View, StyleSheet } from "react-native";
+import { Screen, InfoCard, PrimaryLink } from "@/components/mvp-ui";
 
 export default function Index() {
   return (
-    <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
-    </View>
+    <Screen
+      title="Goals"
+      subtitle="Choose a goal to see its progress and criteria."
+    >
+      <InfoCard
+        eyebrow="ACTIVE GOAL"
+        title="Complete the Lumbridge Starter Path"
+        description="Finish the three beginner tasks around Lumbridge."
+        detail="1 of 3 criteria complete"
+      />
+      <PrimaryLink href="/goal-detail" label="View goal" />
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
