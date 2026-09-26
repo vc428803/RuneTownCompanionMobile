@@ -1,23 +1,47 @@
 import { Href, Link } from "expo-router";
-import { PropsWithChildren } from "react";
+import { PropsWithChildren, ReactNode } from "react";
 import {
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextStyle,
   View,
+  ViewStyle,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+export const colors = {
+  background: "#FFFFFF",
+  surface: "#F8FAFC",
+  surfaceStrong: "#F1F5F9",
+  border: "#E2E8F0",
+  text: "#0F172A",
+  textMuted: "#64748B",
+  primary: "#2563EB",
+  primaryPressed: "#1D4ED8",
+  success: "#15803D",
+  successSoft: "#DCFCE7",
+  warning: "#B45309",
+  warningSoft: "#FEF3C7",
+} as const;
 
 type ScreenProps = PropsWithChildren<{
   title: string;
-  subtitle: string;
+  subtitle?: string;
+  footer?: ReactNode;
 }>;
 
-type InfoCardProps = {
-  eyebrow?: string;
-  title: string;
-  description: string;
-  detail?: string;
+type StatusTone = "active" | "complete" | "ready" | "neutral";
+
+type StatusBadgeProps = {
+  label: string;
+  tone?: StatusTone;
+};
+
+type ProgressBarProps = {
+  completed: number;
+  total: number;
 };
 
 type PrimaryLinkProps = {
@@ -25,35 +49,79 @@ type PrimaryLinkProps = {
   label: string;
 };
 
-export function Screen({ title, subtitle, children }: ScreenProps) {
+type PrimaryButtonProps = {
+  label: string;
+  onPress: () => void;
+};
+
+export function Screen({ title, subtitle, children, footer }: ScreenProps) {
   return (
-    <ScrollView
-      contentContainerStyle={styles.screen}
-      contentInsetAdjustmentBehavior="automatic"
-    >
-      <View style={styles.heading}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {title}
-        </Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
-      </View>
-      {children}
-    </ScrollView>
+    <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.content}>
+          <View style={styles.heading}>
+            <Text accessibilityRole="header" style={styles.pageTitle}>
+              {title}
+            </Text>
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          </View>
+          {children}
+        </View>
+      </ScrollView>
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
+    </SafeAreaView>
   );
 }
 
-export function InfoCard({
-  eyebrow,
-  title,
-  description,
-  detail,
-}: InfoCardProps) {
+export function Card({
+  children,
+  style,
+}: PropsWithChildren<{ style?: ViewStyle }>) {
+  return <View style={[styles.card, style]}>{children}</View>;
+}
+
+export function StatusBadge({ label, tone = "neutral" }: StatusBadgeProps) {
   return (
-    <View style={styles.card}>
-      {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardDescription}>{description}</Text>
-      {detail ? <Text style={styles.detail}>{detail}</Text> : null}
+    <View style={[styles.badge, badgeStyles[tone].container]}>
+      <View style={[styles.badgeDot, badgeStyles[tone].dot]} />
+      <Text style={[styles.badgeText, badgeStyles[tone].text]}>{label}</Text>
+    </View>
+  );
+}
+
+export function ProgressBar({ completed, total }: ProgressBarProps) {
+  const percentage = total > 0 ? Math.min((completed / total) * 100, 100) : 0;
+
+  return (
+    <View
+      accessibilityLabel={`完成進度 ${completed} / ${total}`}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: total, now: completed }}
+      style={styles.progressTrack}
+    >
+      <View style={[styles.progressFill, { width: `${percentage}%` }]} />
+    </View>
+  );
+}
+
+export function SectionHeader({ title, detail }: { title: string; detail?: string }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {detail ? <Text style={styles.sectionDetail}>{detail}</Text> : null}
+    </View>
+  );
+}
+
+export function LabelValue({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.labelValue}>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.value}>{value}</Text>
     </View>
   );
 }
@@ -74,69 +142,177 @@ export function PrimaryLink({ href, label }: PrimaryLinkProps) {
   );
 }
 
+export function PrimaryButton({ label, onPress }: PrimaryButtonProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.primaryButton,
+        pressed && styles.primaryButtonPressed,
+      ]}
+    >
+      <Text style={styles.primaryButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const badgeStyles: Record<
+  StatusTone,
+  { container: ViewStyle; dot: ViewStyle; text: TextStyle }
+> = {
+  active: {
+    container: { backgroundColor: "#DBEAFE" },
+    dot: { backgroundColor: colors.primary },
+    text: { color: "#1E40AF" },
+  },
+  complete: {
+    container: { backgroundColor: colors.successSoft },
+    dot: { backgroundColor: colors.success },
+    text: { color: colors.success },
+  },
+  ready: {
+    container: { backgroundColor: colors.warningSoft },
+    dot: { backgroundColor: colors.warning },
+    text: { color: colors.warning },
+  },
+  neutral: {
+    container: { backgroundColor: colors.surfaceStrong },
+    dot: { backgroundColor: colors.textMuted },
+    text: { color: "#475569" },
+  },
+};
+
 const styles = StyleSheet.create({
-  screen: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
     flexGrow: 1,
-    gap: 20,
-    padding: 20,
-    backgroundColor: "#f3f4f6",
+  },
+  content: {
+    width: "100%",
+    maxWidth: 680,
+    alignSelf: "center",
+    gap: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 32,
   },
   heading: {
     gap: 8,
   },
-  title: {
-    color: "#111827",
+  pageTitle: {
+    color: colors.text,
     fontSize: 30,
     fontWeight: "700",
+    letterSpacing: -0.5,
   },
   subtitle: {
-    color: "#4b5563",
-    fontSize: 16,
-    lineHeight: 24,
+    color: colors.textMuted,
+    fontSize: 15,
+    lineHeight: 23,
   },
   card: {
-    gap: 8,
+    gap: 14,
     padding: 18,
-    borderColor: "#d1d5db",
-    borderRadius: 12,
     borderWidth: 1,
-    backgroundColor: "#ffffff",
+    borderColor: colors.border,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  eyebrow: {
-    color: "#2563eb",
+  badge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  badgeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  badgeText: {
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 0.8,
   },
-  cardTitle: {
-    color: "#111827",
-    fontSize: 20,
+  progressTrack: {
+    width: "100%",
+    height: 8,
+    overflow: "hidden",
+    borderRadius: 999,
+    backgroundColor: "#E2E8F0",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: colors.primary,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  sectionTitle: {
+    flexShrink: 1,
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  sectionDetail: {
+    color: colors.textMuted,
+    fontSize: 13,
     fontWeight: "600",
   },
-  cardDescription: {
-    color: "#4b5563",
+  labelValue: {
+    gap: 4,
+  },
+  label: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  value: {
+    color: colors.text,
     fontSize: 15,
+    fontWeight: "600",
     lineHeight: 22,
   },
-  detail: {
-    color: "#166534",
-    fontSize: 14,
-    fontWeight: "600",
+  footer: {
+    width: "100%",
+    maxWidth: 680,
+    alignSelf: "center",
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
   },
   primaryButton: {
-    minHeight: 48,
+    minHeight: 52,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
-    borderRadius: 10,
-    backgroundColor: "#2563eb",
+    borderRadius: 12,
+    backgroundColor: colors.primary,
   },
   primaryButtonPressed: {
-    opacity: 0.8,
+    backgroundColor: colors.primaryPressed,
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });
