@@ -1,6 +1,7 @@
 import { Href, Link } from "expo-router";
 import { PropsWithChildren, ReactNode } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,6 +25,8 @@ export const colors = {
   successSoft: "#DCFCE7",
   warning: "#B45309",
   warningSoft: "#FEF3C7",
+  danger: "#B91C1C",
+  dangerSoft: "#FEE2E2",
 } as const;
 
 type ScreenProps = PropsWithChildren<{
@@ -32,7 +35,7 @@ type ScreenProps = PropsWithChildren<{
   footer?: ReactNode;
 }>;
 
-type StatusTone = "active" | "complete" | "ready" | "neutral";
+export type StatusTone = "active" | "complete" | "ready" | "neutral";
 
 type StatusBadgeProps = {
   label: string;
@@ -52,6 +55,7 @@ type PrimaryLinkProps = {
 type PrimaryButtonProps = {
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 };
 
 export function Screen({ title, subtitle, children, footer }: ScreenProps) {
@@ -142,18 +146,55 @@ export function PrimaryLink({ href, label }: PrimaryLinkProps) {
   );
 }
 
-export function PrimaryButton({ label, onPress }: PrimaryButtonProps) {
+export function PrimaryButton({
+  label,
+  onPress,
+  disabled = false,
+}: PrimaryButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.primaryButton,
         pressed && styles.primaryButtonPressed,
+        disabled && styles.primaryButtonDisabled,
       ]}
     >
       <Text style={styles.primaryButtonText}>{label}</Text>
     </Pressable>
+  );
+}
+
+export function LoadingState({ label = "載入中…" }: { label?: string }) {
+  return (
+    <View accessibilityLiveRegion="polite" style={styles.stateContainer}>
+      <ActivityIndicator color={colors.primary} size="large" />
+      <Text style={styles.stateMessage}>{label}</Text>
+    </View>
+  );
+}
+
+export function MessageState({
+  title,
+  message,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <View accessibilityLiveRegion="polite" style={styles.stateContainer}>
+      <Text style={styles.stateTitle}>{title}</Text>
+      <Text style={styles.stateMessage}>{message}</Text>
+      {actionLabel && onAction ? (
+        <PrimaryButton label={actionLabel} onPress={onAction} />
+      ) : null}
+    </View>
   );
 }
 
@@ -310,9 +351,34 @@ const styles = StyleSheet.create({
   primaryButtonPressed: {
     backgroundColor: colors.primaryPressed,
   },
+  primaryButtonDisabled: {
+    opacity: 0.5,
+  },
   primaryButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
+  },
+  stateContainer: {
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 36,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+  },
+  stateTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  stateMessage: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
   },
 });

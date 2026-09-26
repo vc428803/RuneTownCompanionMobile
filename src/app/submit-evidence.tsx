@@ -1,9 +1,6 @@
-import {
-  colors,
-  PrimaryButton,
-  Screen,
-} from "@/components/mvp-ui";
-import { router } from "expo-router";
+import { submitEvidence } from "@/api/client";
+import { colors, PrimaryButton, Screen } from "@/components/mvp-ui";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -27,6 +24,7 @@ function Field({
       <Text style={styles.label}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
+        autoCapitalize="sentences"
         multiline={multiline}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -40,20 +38,65 @@ function Field({
 }
 
 export default function SubmitEvidenceScreen() {
-  const [title, setTitle] = useState("完成 Lumbridge 烹飪練習");
-  const [description, setDescription] = useState(
-    "我在 Lumbridge 河邊捕捉生蝦，並在附近的營火完成烹煮。",
-  );
-  const [source, setSource] = useState("Personal activity log");
+  const { goalId, criterionId } = useLocalSearchParams<{
+    goalId?: string;
+    criterionId?: string;
+  }>();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [source, setSource] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    if (!goalId || !criterionId) {
+      setError("缺少 goalId 或 criterionId，無法提交 Evidence。");
+      return;
+    }
+
+    if (!title.trim() || !description.trim()) {
+      setError("title 與 description 不可留白。");
+      return;
+    }
+
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await submitEvidence(goalId, criterionId, {
+        title: title.trim(),
+        description: description.trim(),
+        source: source.trim(),
+      });
+
+      router.replace({
+        pathname: "/submit-result",
+        params: {
+          accepted: String(result.accepted),
+          criterionCompleted: String(result.criterionCompleted),
+          criterionId: result.criterionId,
+          goalId: result.goalId,
+          goalStatus: result.goalStatus,
+        },
+      });
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "提交 Evidence 時發生未知錯誤。",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <Screen
       title="提交 Evidence"
-      subtitle="提供足以支持此 criterion 的基本文字資料。"
+      subtitle="提供足以支持此 Criterion 的文字資料。"
       footer={
         <PrimaryButton
-          label="提交"
-          onPress={() => router.push("/submit-result")}
+          disabled={isSubmitting}
+          label={isSubmitting ? "提交中…" : "提交"}
+          onPress={handleSubmit}
         />
       }
     >
@@ -68,18 +111,23 @@ export default function SubmitEvidenceScreen() {
           label="description"
           multiline
           onChangeText={setDescription}
-          placeholder="描述你如何完成這個 criterion"
+          placeholder="描述這筆 Evidence 如何滿足 Criterion"
           value={description}
         />
         <Field
           label="source"
           onChangeText={setSource}
-          placeholder="輸入 Evidence 來源"
+          placeholder="輸入來源文字或網址"
           value={source}
         />
       </View>
+      {error ? (
+        <Text accessibilityLiveRegion="assertive" style={styles.errorText}>
+          {error}
+        </Text>
+      ) : null}
       <Text style={styles.helperText}>
-        第一版僅儲存文字內容，不包含圖片上傳與 Evidence type。
+        title 與 description 不可留白。source 會以一般文字送出，不保證是網址。
       </Text>
     </Screen>
   );
@@ -111,6 +159,12 @@ const styles = StyleSheet.create({
   multilineInput: {
     minHeight: 132,
     lineHeight: 23,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 20,
   },
   helperText: {
     color: colors.textMuted,

@@ -16,6 +16,22 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Backend API
+
+The app uses the four Mobile MVP endpoints documented by the backend contract.
+Set `EXPO_PUBLIC_API_BASE_URL` when the default URL is not reachable:
+
+```bash
+cp .env.example .env.local
+```
+
+- Android Emulator defaults to `http://10.0.2.2:8080`.
+- iOS Simulator and web default to `http://localhost:8080`.
+- A physical device must use the computer's LAN address, for example
+  `http://192.168.1.107:8080`.
+
+Restart or reload Expo after changing the environment variable.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

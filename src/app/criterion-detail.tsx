@@ -1,70 +1,130 @@
+import { getCriterion } from "@/api/client";
 import {
   Card,
   colors,
+  LabelValue,
+  LoadingState,
+  MessageState,
   PrimaryLink,
   Screen,
   SectionHeader,
   StatusBadge,
 } from "@/components/mvp-ui";
-import { selectedCriterion } from "@/data/mock-goals";
+import { useApiResource } from "@/hooks/use-api-resource";
+import { useLocalSearchParams } from "expo-router";
+import { useCallback } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 export default function CriterionDetailScreen() {
+  const { goalId, criterionId } = useLocalSearchParams<{
+    goalId?: string;
+    criterionId?: string;
+  }>();
+  const loadCriterion = useCallback(() => {
+    if (!goalId || !criterionId) {
+      return Promise.reject(
+        new Error("缺少 goalId 或 criterionId，無法載入 Criterion。"),
+      );
+    }
+    return getCriterion(goalId, criterionId);
+  }, [criterionId, goalId]);
+  const {
+    data: criterion,
+    error,
+    isLoading,
+    reload,
+  } = useApiResource(loadCriterion);
+
+  if (isLoading && !criterion) {
+    return (
+      <Screen title="Criterion 詳情">
+        <LoadingState label="正在載入 Criterion…" />
+      </Screen>
+    );
+  }
+
+  if (error && !criterion) {
+    return (
+      <Screen title="Criterion 詳情">
+        <MessageState
+          actionLabel="重試"
+          message={error.message}
+          onAction={reload}
+          title="無法載入 Criterion"
+        />
+      </Screen>
+    );
+  }
+
+  if (!criterion || !goalId || !criterionId) {
+    return null;
+  }
+
   return (
     <Screen
-      title={selectedCriterion.description}
+      title={criterion.description}
       subtitle="CompletionCriterion 詳情"
-      footer={<PrimaryLink href="/submit-evidence" label="提交 Evidence" />}
+      footer={
+        !criterion.completed ? (
+          <PrimaryLink
+            href={{
+              pathname: "/submit-evidence",
+              params: { goalId, criterionId },
+            }}
+            label="提交 Evidence"
+          />
+        ) : undefined
+      }
     >
+      {error ? (
+        <Text style={styles.refreshError}>更新失敗，正在顯示上次載入的資料。</Text>
+      ) : null}
       <Card>
-        <StatusBadge label="In progress" tone="active" />
-        <View style={styles.infoBlock}>
-          <Text style={styles.infoLabel}>completed</Text>
-          <Text style={styles.infoValue}>false</Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.infoBlock}>
-          <Text style={styles.infoLabel}>要求說明</Text>
-          <Text style={styles.requirement}>
-            在 Lumbridge 周邊捕捉一隻生蝦，使用營火成功烹煮後，提交能清楚說明完成過程的 Evidence。
-          </Text>
-        </View>
+        <StatusBadge
+          label={criterion.completed ? "Completed" : "In progress"}
+          tone={criterion.completed ? "complete" : "active"}
+        />
+        <LabelValue label="completed" value={String(criterion.completed)} />
       </Card>
 
       <View style={styles.evidenceSection}>
-        <SectionHeader title="Supporting Evidence" detail="0 筆" />
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIcon}>
-            <Text style={styles.emptyIconText}>＋</Text>
+        <SectionHeader
+          title="Supporting Evidence"
+          detail={criterion.supportingEvidence ? "1 筆" : "0 筆"}
+        />
+        {criterion.supportingEvidence ? (
+          <Card>
+            <LabelValue
+              label="description"
+              value={criterion.supportingEvidence.description}
+            />
+            <View style={styles.divider} />
+            <LabelValue
+              label="source"
+              value={criterion.supportingEvidence.source ?? "未提供"}
+            />
+          </Card>
+        ) : (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}>
+              <Text style={styles.emptyIconText}>＋</Text>
+            </View>
+            <Text style={styles.emptyTitle}>尚無 Evidence</Text>
+            <Text style={styles.emptyDescription}>
+              提交並通過驗證後，Supporting Evidence 會顯示在這裡。
+            </Text>
           </View>
-          <Text style={styles.emptyTitle}>尚無 Evidence</Text>
-          <Text style={styles.emptyDescription}>
-            提交文字資料後，相關 Evidence 會顯示在這裡。
-          </Text>
-        </View>
+        )}
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  infoBlock: {
-    gap: 6,
-  },
-  infoLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  infoValue: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  requirement: {
-    color: colors.text,
-    fontSize: 15,
-    lineHeight: 24,
+  refreshError: {
+    color: colors.warning,
+    fontSize: 13,
+    lineHeight: 20,
   },
   divider: {
     height: StyleSheet.hairlineWidth,

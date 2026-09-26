@@ -1,56 +1,90 @@
-import { colors, ProgressBar, Screen, StatusBadge } from "@/components/mvp-ui";
-import { GoalStatus, goals } from "@/data/mock-goals";
+import { getGoals } from "@/api/client";
+import {
+  colors,
+  LoadingState,
+  MessageState,
+  ProgressBar,
+  Screen,
+  StatusBadge,
+} from "@/components/mvp-ui";
+import { useApiResource } from "@/hooks/use-api-resource";
+import { statusPresentation } from "@/utils/goal-status";
 import { Link } from "expo-router";
+import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-function statusPresentation(status: GoalStatus) {
-  switch (status) {
-    case "COMPLETED":
-      return { label: "已完成", tone: "complete" as const };
-    case "READY_TO_COMPLETE":
-      return { label: "待完成", tone: "ready" as const };
-    default:
-      return { label: "進行中", tone: "active" as const };
-  }
-}
-
 export default function GoalsListScreen() {
+  const loadGoals = useCallback(() => getGoals(), []);
+  const { data: goals, error, isLoading, reload } = useApiResource(loadGoals);
+
   return (
     <Screen title="我的目標" subtitle="查看目前進度，持續完成下一個條件。">
-      <View style={styles.list}>
-        {goals.map((goal) => {
-          const status = statusPresentation(goal.status);
+      {isLoading && !goals ? <LoadingState label="正在載入 Goals…" /> : null}
 
-          return (
-            <Link href="/goal-detail" asChild key={goal.id}>
-              <Pressable
-                accessibilityHint="開啟目標詳情"
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.goalCard,
-                  pressed && styles.goalCardPressed,
-                ]}
+      {error && !goals ? (
+        <MessageState
+          actionLabel="重試"
+          message={error.message}
+          onAction={reload}
+          title="無法載入 Goals"
+        />
+      ) : null}
+
+      {goals?.length === 0 ? (
+        <MessageState
+          message="後端目前沒有已註冊的 Goal。"
+          title="尚無 Goal"
+        />
+      ) : null}
+
+      {goals && goals.length > 0 ? (
+        <View style={styles.list}>
+          {error ? (
+            <Text style={styles.refreshError}>
+              更新失敗，正在顯示上次載入的資料。
+            </Text>
+          ) : null}
+          {goals.map((goal) => {
+            const status = statusPresentation(goal.goalStatus);
+
+            return (
+              <Link
+                href={{
+                  pathname: "/goal-detail",
+                  params: { goalId: goal.goalId },
+                }}
+                asChild
+                key={goal.goalId}
               >
-                <View style={styles.cardTopRow}>
-                  <StatusBadge label={status.label} tone={status.tone} />
-                  <Text style={styles.chevron}>›</Text>
-                </View>
-                <Text style={styles.goalTitle}>{goal.title}</Text>
-                <View style={styles.progressCopy}>
-                  <Text style={styles.progressLabel}>完成條件</Text>
-                  <Text style={styles.progressCount}>
-                    {goal.completedCriteriaCount} / {goal.totalCriteriaCount}
-                  </Text>
-                </View>
-                <ProgressBar
-                  completed={goal.completedCriteriaCount}
-                  total={goal.totalCriteriaCount}
-                />
-              </Pressable>
-            </Link>
-          );
-        })}
-      </View>
+                <Pressable
+                  accessibilityHint="開啟目標詳情"
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.goalCard,
+                    pressed && styles.goalCardPressed,
+                  ]}
+                >
+                  <View style={styles.cardTopRow}>
+                    <StatusBadge label={status.label} tone={status.tone} />
+                    <Text style={styles.chevron}>›</Text>
+                  </View>
+                  <Text style={styles.goalTitle}>{goal.title}</Text>
+                  <View style={styles.progressCopy}>
+                    <Text style={styles.progressLabel}>完成條件</Text>
+                    <Text style={styles.progressCount}>
+                      {goal.completedCriteriaCount} / {goal.totalCriteriaCount}
+                    </Text>
+                  </View>
+                  <ProgressBar
+                    completed={goal.completedCriteriaCount}
+                    total={goal.totalCriteriaCount}
+                  />
+                </Pressable>
+              </Link>
+            );
+          })}
+        </View>
+      ) : null}
     </Screen>
   );
 }
@@ -58,6 +92,11 @@ export default function GoalsListScreen() {
 const styles = StyleSheet.create({
   list: {
     gap: 16,
+  },
+  refreshError: {
+    color: colors.warning,
+    fontSize: 13,
+    lineHeight: 20,
   },
   goalCard: {
     minHeight: 180,
