@@ -1,368 +1,140 @@
-# RuneTownCompanion Mobile API Contract
+# RuneTownCompanion Mobile API Integration Summary
 
-This document is the frontend contract for the currently implemented RuneTownCompanion backend. It describes only APIs and data that exist in production code today.
+This document is a human-readable integration summary for the Mobile frontend. It is not a replacement for the backend HTTP specification.
 
-## 1. Backend Base Information
+> Maintenance rule: When the backend API changes, update only the frontend-relevant summary here. Keep the complete HTTP schema in OpenAPI instead of copying it into this document.
 
-| Item | Local URL |
-|---|---|
-| Base URL | `http://localhost:8080` |
-| Swagger UI | `http://localhost:8080/swagger-ui.html` |
-| OpenAPI JSON | `http://localhost:8080/v3/api-docs` |
+## 1. Source of Truth
 
-The port can be overridden when starting Spring Boot. Mobile development on a physical device must replace `localhost` with an address reachable from that device.
+The latest backend Springdoc/OpenAPI definition is the authoritative source for the complete HTTP contract, including request and response schemas.
 
-All request and response bodies below use JSON.
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- This document keeps only the information needed to integrate and maintain the Mobile frontend.
+- If this summary conflicts with the latest backend OpenAPI, the backend OpenAPI takes precedence and this summary should be corrected.
 
-## 2. Available Endpoints
+The local backend base URL is `http://localhost:8080`. A physical device must use a backend address reachable from that device.
 
-### GET `/api/goals`
+## 2. Current Mobile MVP Endpoints
 
-Returns all goals currently registered in the backend, ordered by `goalId`.
+| Method and path | Mobile purpose | Frontend-relevant success result | UI-relevant status codes |
+|---|---|---|---|
+| `GET /api/goals` | Load the Goal list. | Goal summaries used for title, status, and progress. | `200` success. |
+| `GET /api/goals/{goalId}` | Load Goal Detail and its criteria. | Goal detail with current lifecycle status and criteria. | `200` success; `404` Goal unavailable. |
+| `GET /api/goals/{goalId}/criteria/{criterionId}` | Load Criterion Detail and accepted supporting Evidence. | Criterion detail; `supportingEvidence` may be `null`. | `200` success; `404` Goal or Criterion unavailable. |
+| `POST /api/goals/{goalId}/criteria/{criterionId}/evidence` | Submit an Evidence candidate using `title`, `description`, and `source`. | Submission result containing acceptance, criterion completion, and latest Goal status. | `200` accepted; `422` did not qualify; `404` target unavailable; `409` Criterion already completed. |
+| `POST /api/goals/{goalId}/completion` | Formally complete a Goal that is `READY_TO_COMPLETE`; no request body is sent. | `{ goalId, goalStatus }`, where a successful completion has `goalStatus: "COMPLETED"`. | `200` completed; `404` Goal unavailable; `409` Goal is not currently `READY_TO_COMPLETE`. |
 
-- Path parameters: none
-- Request body: none
-- Success status: `200 OK`
-- Response body: array of `GoalSummary`
+Network and unexpected server failures use the app's shared API error handling.
 
-Example request:
+## 3. Shared Frontend Data
 
-```http
-GET http://localhost:8080/api/goals
-```
+These are summaries of fields currently consumed by the Mobile frontend. Consult OpenAPI for the complete wire schema.
 
-Example response:
+### Goal summary
 
-```json
-[
-  {
-    "goalId": "goal-demo",
-    "title": "Publish the first article",
-    "goalStatus": "ACTIVE",
-    "completedCriteriaCount": 0,
-    "totalCriteriaCount": 1
-  }
-]
-```
+Used by the Goal list:
 
-The API does not return a percentage. The frontend may calculate progress as `completedCriteriaCount / totalCriteriaCount`.
+- `goalId`: navigation and API identifier.
+- `title`: display title.
+- `goalStatus`: current lifecycle state.
+- `completedCriteriaCount`: completed criteria count.
+- `totalCriteriaCount`: total criteria count.
 
-### GET `/api/goals/{goalId}`
+The frontend derives progress from the completed and total counts; the backend does not provide a percentage.
 
-Returns one goal and its completion criteria.
+### Goal detail
 
-- Path parameter `goalId`: required string
-- Request body: none
-- Success status: `200 OK`
-- Error status: `404 Not Found` when the goal does not exist
-- Response body: `GoalDetail`
+Used by Goal Detail:
 
-Example request:
+- `goalId`
+- `title`
+- `lifeArchetype`
+- `goalStatus`
+- `criteria`: array of CompletionCriterion summaries.
 
-```http
-GET http://localhost:8080/api/goals/goal-demo
-```
+### CompletionCriterion
 
-Example response:
+Fields used in criterion summaries and details:
 
-```json
-{
-  "goalId": "goal-demo",
-  "title": "Publish the first article",
-  "lifeArchetype": "CREATOR",
-  "goalStatus": "ACTIVE",
-  "criteria": [
-    {
-      "criterionId": "criterion-demo",
-      "description": "Publish the article",
-      "completed": false
-    }
-  ]
-}
-```
-
-### GET `/api/goals/{goalId}/criteria/{criterionId}`
-
-Returns one completion criterion and its single supporting Evidence, if present.
-
-- Path parameter `goalId`: required string
-- Path parameter `criterionId`: required string
-- Request body: none
-- Success status: `200 OK`
-- Error status: `404 Not Found` when either the goal or criterion does not exist
-- Response body: `CriterionDetail`
-
-Example request:
-
-```http
-GET http://localhost:8080/api/goals/goal-demo/criteria/criterion-demo
-```
-
-Example response before Evidence is accepted:
-
-```json
-{
-  "criterionId": "criterion-demo",
-  "description": "Publish the article",
-  "completed": false,
-  "supportingEvidence": null
-}
-```
-
-Example `supportingEvidence` after Evidence is accepted:
-
-```json
-{
-  "criterionId": "criterion-demo",
-  "description": "Publish the article",
-  "completed": true,
-  "supportingEvidence": {
-    "description": "The article is now publicly available",
-    "source": "https://example.com/articles/first"
-  }
-}
-```
-
-### POST `/api/goals/{goalId}/criteria/{criterionId}/evidence`
-
-Submits an Evidence candidate for one criterion. When accepted, the criterion is completed and the Goal status is re-evaluated.
-
-- Path parameter `goalId`: required string
-- Path parameter `criterionId`: required string
-- Request body: `EvidenceSubmissionRequest`, required
-- `200 OK`: Evidence accepted
-- `404 Not Found`: goal or criterion does not exist
-- `409 Conflict`: criterion is already completed
-- `422 Unprocessable Content`: Evidence did not qualify
-- Response body for `200` and `422`: `EvidenceSubmissionResponse`
-
-Example request:
-
-```http
-POST http://localhost:8080/api/goals/goal-demo/criteria/criterion-demo/evidence
-Content-Type: application/json
-```
-
-```json
-{
-  "title": "Published the first article",
-  "description": "The article is now publicly available",
-  "source": "https://example.com/articles/first"
-}
-```
-
-Example successful response:
-
-```json
-{
-  "accepted": true,
-  "goalId": "goal-demo",
-  "criterionId": "criterion-demo",
-  "criterionCompleted": true,
-  "goalStatus": "READY_TO_COMPLETE"
-}
-```
-
-Example qualification failure response (`422`):
-
-```json
-{
-  "accepted": false,
-  "goalId": "goal-demo",
-  "criterionId": "criterion-demo",
-  "criterionCompleted": false,
-  "goalStatus": "ACTIVE"
-}
-```
-
-`title` and `description` must be non-null and non-blank to qualify. The published OpenAPI schema marks `title`, `description`, and `source` as required; frontend clients should always send all three. `source` is a plain string and is not guaranteed to be a validated URL.
-
-Malformed JSON or a missing request body may produce `400 Bad Request` from Spring. The documented `404` and `409` responses currently use Spring's default error shape, for example:
-
-```json
-{
-  "timestamp": "2026-09-26T03:50:36.569Z",
-  "status": 409,
-  "error": "Conflict",
-  "path": "/api/goals/goal-demo/criteria/criterion-demo/evidence"
-}
-```
-
-The error body does not currently guarantee a human-readable domain message.
-
-## 3. Mobile MVP API Availability
-
-| Mobile need | Status |
-|---|---|
-| `GET /api/goals` | IMPLEMENTED |
-| `GET /api/goals/{goalId}` | IMPLEMENTED |
-| `GET /api/goals/{goalId}/criteria/{criterionId}` | IMPLEMENTED |
-| `POST /api/goals/{goalId}/criteria/{criterionId}/evidence` | IMPLEMENTED |
-
-These four endpoints are the complete currently available Mobile MVP API surface.
-
-## 4. Data Contract
-
-“Required” means the frontend should expect the field to be present in a successful response or must send it in a request. Except where explicitly marked nullable, successful-response fields are non-null in the current API flow.
-
-### Goal Summary
-
-Returned by `GET /api/goals`.
-
-| Field | JSON type | Required | Nullable | Meaning |
-|---|---|---:|---:|---|
-| `goalId` | string | yes | no | Goal identifier used in API paths. |
-| `title` | string | yes | no | Display title. |
-| `goalStatus` | `GoalStatus` string | yes | no | Current Goal lifecycle status. |
-| `completedCriteriaCount` | integer (`int64`) | yes | no | Number of completed criteria. |
-| `totalCriteriaCount` | integer (`int32`) | yes | no | Total number of criteria. |
-
-### Goal Detail
-
-Returned by `GET /api/goals/{goalId}`.
-
-| Field | JSON type | Required | Nullable | Meaning |
-|---|---|---:|---:|---|
-| `goalId` | string | yes | no | Goal identifier. |
-| `title` | string | yes | no | Display title. |
-| `lifeArchetype` | `LifeArchetype` string | yes | no | Goal classification. |
-| `goalStatus` | `GoalStatus` string | yes | no | Current Goal lifecycle status. |
-| `criteria` | array of `CriterionSummary` | yes | no | Criteria belonging to this Goal. |
-
-### CompletionCriterion Summary
-
-Elements of `GoalDetail.criteria`.
-
-| Field | JSON type | Required | Nullable | Meaning |
-|---|---|---:|---:|---|
-| `criterionId` | string | yes | no | Registry-provided identifier used in criterion API paths. |
-| `description` | string | yes | no | Criterion display text. |
-| `completed` | boolean | yes | no | Whether the criterion is satisfied. |
-
-### CompletionCriterion Detail
-
-Returned by `GET /api/goals/{goalId}/criteria/{criterionId}`.
-
-| Field | JSON type | Required | Nullable | Meaning |
-|---|---|---:|---:|---|
-| `criterionId` | string | yes | no | Registry-provided criterion identifier. |
-| `description` | string | yes | no | Criterion display text. |
-| `completed` | boolean | yes | no | Whether the criterion is satisfied. |
-| `supportingEvidence` | `SupportingEvidence` object | yes | yes | Evidence satisfying this criterion, or `null`. |
+- `criterionId`
+- `description`
+- `completed`
+- `supportingEvidence`: detail-only field; a Supporting Evidence object or `null`.
 
 ### Supporting Evidence
 
-| Field | JSON type | Required when object exists | Nullable | Meaning |
-|---|---|---:|---:|---|
-| `description` | string | yes | no for Evidence accepted through the API | Submitted Evidence description. |
-| `source` | string | yes | possible at runtime | Submitted source text; not necessarily a URL. |
+- `description`
+- `source`: string or `null`; it is display text and is not guaranteed to be a validated URL.
 
-Supporting Evidence does not expose an Evidence ID, title, timestamp, qualification details, or a list of prior submissions.
+The current Criterion Detail does not expose the Evidence title, ID, timestamp, or submission history.
 
-### Evidence Submission Request
+### Evidence submission response
 
-| Field | JSON type | Required | Nullable | Meaning |
-|---|---|---:|---:|---|
-| `title` | string | yes | no | Candidate title; must not be blank. |
-| `description` | string | yes | no | Candidate description; must not be blank. |
-| `source` | string | yes | frontend should not send null | Source text. URL format is not enforced. |
+- `accepted`
+- `goalId`
+- `criterionId`
+- `criterionCompleted`
+- `goalStatus`
 
-### Evidence Submission Response
+The same response shape is used for an accepted submission (`200`) and a qualification rejection (`422`).
 
-Returned for both accepted (`200`) and qualification-rejected (`422`) submissions.
+### Goal completion response
 
-| Field | JSON type | Required | Nullable | Meaning |
-|---|---|---:|---:|---|
-| `accepted` | boolean | yes | no | Whether the Evidence qualified. |
-| `goalId` | string | yes | no | Target Goal identifier. |
-| `criterionId` | string | yes | no | Target criterion identifier. |
-| `criterionCompleted` | boolean | yes | no | Criterion state after processing. |
-| `goalStatus` | `GoalStatus` string | yes | no | Goal state after processing. |
+- `goalId`
+- `goalStatus`: authoritative state after the completion attempt; it must be `COMPLETED` for the frontend to treat a `200` response as successful completion.
 
-## 5. Enum / Allowed Values
+## 4. Important Enums
 
 ### GoalStatus
 
-The backend enum contains exactly:
+- `ACTIVE`: Goal is in progress.
+- `PAUSED`: Goal is paused.
+- `READY_TO_COMPLETE`: every completion criterion is satisfied, but the Goal has not been formally completed.
+- `COMPLETED`: Goal has been formally completed by the backend.
+- `ABANDONED`: Goal is abandoned.
 
-```text
-ACTIVE
-PAUSED
-READY_TO_COMPLETE
-COMPLETED
-ABANDONED
-```
+Important lifecycle rules:
 
-The Mobile app should tolerate every value even though the current API only provides an Evidence submission mutation.
+- `100%` progress does not mean `COMPLETED`.
+- `READY_TO_COMPLETE` is the state waiting for the explicit completion action.
+- Only `COMPLETED` represents a formally completed Goal.
+- The frontend must never promote `READY_TO_COMPLETE` to `COMPLETED` without a successful backend completion response.
 
 ### LifeArchetype
 
-The backend enum contains exactly:
+The Mobile frontend supports these backend values for display:
 
-```text
-GUARDIAN
-SCHOLAR
-ARTISAN
-CREATOR
-TECHNOMANCER
-HEALER
-MERCHANT
-RANGER
-CULTIVATOR
-COMMANDER
-CHALLENGER
-```
+`GUARDIAN`, `SCHOLAR`, `ARTISAN`, `CREATOR`, `TECHNOMANCER`, `HEALER`, `MERCHANT`, `RANGER`, `CULTIVATOR`, `COMMANDER`, `CHALLENGER`.
 
-## 6. Data the Mobile UI Can Safely Use
+## 5. Frontend Behavior Rules
 
-### Domain and API supported
+- Treat Goal completion as successful only after `POST /api/goals/{goalId}/completion` returns `200` with `goalStatus === "COMPLETED"`.
+- Apply a successful Goal completion response directly to the current Goal Detail state; no follow-up GET is required.
+- On completion `409`, show that the state changed or completion is unavailable, then GET Goal Detail again because frontend state may be stale.
+- On completion `404`, show that the Goal no longer exists or cannot be retrieved.
+- Disable duplicate submission and show loading while a completion request is in flight; always restore request state afterward.
+- Treat Evidence `422` as a handled qualification result, not as an App crash.
+- Treat `supportingEvidence: null` as a valid Criterion Detail state.
+- Network failures and unexpected server errors must produce recoverable UI and must not crash the App.
+- Encode path identifiers before placing them in request URLs.
 
-- Goal ID, title, status, completed criterion count, and total criterion count.
-- Goal LifeArchetype through Goal Detail.
-- Criterion ID, description, and completed state.
-- A criterion's single supporting Evidence as description/source, or `null`.
-- Evidence submission using title, description, and source.
-- Submission result using accepted, criterionCompleted, and latest goalStatus.
-- Updated GET responses after a successful POST, for the lifetime of the same server process.
+## 6. Known Limitations
 
-### Domain exists, but no API is available
+- Backend state is held in memory; restarting the backend resets runtime changes to the seeded demo data.
+- There is no authentication or per-user data separation.
+- There is no persistent or offline storage contract for Mobile data.
+- `criterionId` is currently supplied by backend registry mapping rather than stored on the domain CompletionCriterion itself.
+- Criterion Detail exposes at most one Supporting Evidence object and no Evidence history.
+- Error responses are not normalized into a dedicated Mobile error DTO.
 
-- The collected Evidence list held by the backend has no read endpoint.
-- A Goal can represent `COMPLETED`, but there is currently no Goal completion HTTP endpoint.
+## 7. Unsupported / Do Not Assume
 
-### Not implemented as a Mobile API
+The Mobile frontend must not assume support for:
 
-- Create, edit, delete, pause, abandon, or explicitly complete a Goal.
-- Create, edit, delete, or reorder completion criteria.
-- Evidence history or multiple supporting Evidence records per criterion.
-- Collection browsing APIs.
-- User/account APIs.
-
-## 7. Known Limitations
-
-- Data is stored only in an in-memory registry.
-- Restarting the server resets all runtime changes and restores the seeded demo data.
-- The default local seed is `goal-demo` with `criterion-demo`.
-- `criterionId` comes from the registry mapping; it is not a field on the domain CompletionCriterion.
-- Each criterion currently exposes at most one supporting Evidence object.
-- Supporting Evidence exposes only `description` and `source`.
-- The submitted Evidence `title` is used during submission but is not returned by Criterion Detail.
-- No Evidence history endpoint exists.
-- Goal progress is returned as completed and total counts, not a percentage.
-- Error responses are not yet normalized into a dedicated Mobile error DTO.
-- No pagination, filtering, sorting parameters, API version prefix, or concurrency token is available.
-
-## 8. Frontend Do Not Assume
-
-The Mobile app must not assume that any of the following currently exists:
-
-- Milestone as a navigable or mutable layer between Goal and Evidence.
-- Milestone, ImpactRule, or game-impact HTTP endpoints.
-- World progression or WorldState APIs.
-- AI feedback, AI qualification explanations, or generated suggestions.
-- Multiple supporting Evidence items for one criterion.
-- Evidence history, Evidence IDs, Evidence title retrieval, or Evidence timestamps.
-- Authentication, user identity, authorization, or per-user data separation.
-- Database persistence, offline synchronization, or data surviving a server restart.
-- Goal creation, Goal completion, Goal editing, criterion management, or deletion APIs.
-- A server-calculated progress percentage.
+- Milestone UI flow or Milestone APIs.
+- World State or world-progression APIs.
+- AI behavior, feedback, qualification explanations, or generated suggestions.
+- Collection browsing or mutation APIs.
+- Profile, account, or authentication flows.
+- Game rewards or impact-rule APIs.
