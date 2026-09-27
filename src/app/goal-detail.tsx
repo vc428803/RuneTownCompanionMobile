@@ -1,4 +1,4 @@
-import { getGoal } from "@/api/client";
+import { ApiError, completeGoal, getGoal } from "@/api/client";
 import {
   Card,
   colors,
@@ -17,20 +17,25 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
-const GOAL_COMPLETION_API_AVAILABLE = false;
-
 export default function GoalDetailScreen() {
   const { goalId } = useLocalSearchParams<{ goalId?: string }>();
   const [isCompletionDialogVisible, setIsCompletionDialogVisible] =
     useState(false);
-  const [isCompleting] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
   const loadGoal = useCallback(() => {
     if (!goalId) {
       return Promise.reject(new Error("缺少 goalId，無法載入 Goal。"));
     }
     return getGoal(goalId);
   }, [goalId]);
-  const { data: goal, error, isLoading, reload } = useApiResource(loadGoal);
+  const {
+    data: goal,
+    error,
+    isLoading,
+    reload,
+    setData: setGoal,
+  } = useApiResource(loadGoal);
 
   if (isLoading && !goal) {
     return (
@@ -68,6 +73,41 @@ export default function GoalDetailScreen() {
   const isReadyToComplete = goal.goalStatus === "READY_TO_COMPLETE";
   const isCompleted = goal.goalStatus === "COMPLETED";
 
+  const handleCompleteGoal = async () => {
+    if (isCompleting) {
+      return;
+    }
+
+    setIsCompleting(true);
+    setCompletionError(null);
+
+    try {
+      const response = await completeGoal(goal.goalId);
+
+      if (response.goalStatus !== "COMPLETED") {
+        setCompletionError("後端未回傳 COMPLETED 狀態，請稍後再試。");
+        return;
+      }
+
+      setGoal((currentGoal) =>
+        currentGoal?.goalId === response.goalId
+          ? { ...currentGoal, goalStatus: response.goalStatus }
+          : currentGoal,
+      );
+      setIsCompletionDialogVisible(false);
+    } catch (reason: unknown) {
+      const completionRequestError =
+        reason instanceof Error ? reason : new Error("發生未知錯誤。");
+      setCompletionError(completionRequestError.message);
+
+      if (reason instanceof ApiError && reason.status === 409) {
+        reload();
+      }
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
   return (
     <>
       <Screen
@@ -75,7 +115,10 @@ export default function GoalDetailScreen() {
           isReadyToComplete ? (
             <PrimaryButton
               label="完成目標"
-              onPress={() => setIsCompletionDialogVisible(true)}
+              onPress={() => {
+                setCompletionError(null);
+                setIsCompletionDialogVisible(true);
+              }}
             />
           ) : undefined
         }
@@ -207,10 +250,10 @@ export default function GoalDetailScreen() {
                 • 確認後 Goal 將正式進入 COMPLETED
               </Text>
             </View>
-            {!GOAL_COMPLETION_API_AVAILABLE ? (
-              <View style={styles.dependencyNotice}>
-                <Text style={styles.dependencyNoticeText}>
-                  尚待 backend 提供 Goal complete API contract，目前無法送出完成操作。
+            {completionError ? (
+              <View accessibilityLiveRegion="polite" style={styles.errorNotice}>
+                <Text style={styles.errorNoticeText}>
+                  {completionError}
                 </Text>
               </View>
             ) : null}
@@ -229,10 +272,9 @@ export default function GoalDetailScreen() {
               </Pressable>
               <View style={styles.confirmButtonContainer}>
                 <PrimaryButton
-                  disabled={!GOAL_COMPLETION_API_AVAILABLE}
                   label={isCompleting ? "完成中…" : "確認完成"}
                   loading={isCompleting}
-                  onPress={() => {}}
+                  onPress={handleCompleteGoal}
                 />
               </View>
             </View>
@@ -423,13 +465,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
   },
-  dependencyNotice: {
+  errorNotice: {
     padding: 12,
     borderRadius: 10,
-    backgroundColor: colors.warningSoft,
+    backgroundColor: colors.dangerSoft,
   },
-  dependencyNoticeText: {
-    color: colors.warning,
+  errorNoticeText: {
+    color: colors.danger,
     fontSize: 13,
     fontWeight: "600",
     lineHeight: 19,

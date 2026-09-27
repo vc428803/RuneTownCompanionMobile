@@ -35,13 +35,19 @@
 
 - Added a bottom primary `完成目標` CTA that appears only when Goal Detail receives `READY_TO_COMPLETE`.
 - Added a confirmation modal containing the Goal title, completion-condition summary, cancel action, and confirm-action loading/disabled structure.
-- Kept the confirm action disabled and clearly labeled as waiting for the backend contract; the frontend does not locally change `READY_TO_COMPLETE` into `COMPLETED`.
 - Added a dedicated completed-state message when Goal Detail receives `COMPLETED`; the completion CTA is hidden in that state.
+- Added the typed `POST /api/goals/{goalId}/completion` client integration without a request body.
+- Connected confirmation to the backend with duplicate-submit protection, loading state, and inline error recovery.
+- Applied the successful backend response directly to Goal Detail state without an extra GET.
+- Added completion-specific `404` handling and authoritative state refresh after `409 Conflict`.
+- Verified network failure recovery without crashing or locally promoting Goal state.
 
-### Blocker / dependency
+### Current State
 
-- `MOBILE_API_CONTRACT.md` does not currently define a Goal completion endpoint. A backend endpoint and its request, success, and error contracts are required before the confirmation action can be enabled and wired.
+- Goal Completion integration is complete and the backend completion API blocker is removed.
+- The Mobile MVP now runs from Goal/Criterion browsing through Evidence submission, `READY_TO_COMPLETE`, formal Goal completion, and the final `COMPLETED` state.
+- Android emulator verification covers the successful end-to-end flow, stale-state `409` resynchronization, and network failure recovery.
 
 ### Next step
 
-- Implement and document the smallest backend Goal completion API slice, then return to Mobile to connect the existing confirmation action and refresh Goal Detail from the server response.
+- Add automated frontend regression coverage for the Goal completion success, `404`, `409`, and network-failure state transitions.

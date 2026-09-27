@@ -62,3 +62,8 @@ export type EvidenceSubmissionResponse = {
   criterionCompleted: boolean;
   goalStatus: GoalStatus;
 };
+
+export type GoalCompletionResponse = {
+  goalId: string;
+  goalStatus: GoalStatus;
+};

@@ -47,5 +47,5 @@ export function useApiResource<T>(loader: () => Promise<T>) {
     }, [execute]),
   );
 
-  return { data, error, isLoading, reload: execute };
+  return { data, error, isLoading, reload: execute, setData };
 }

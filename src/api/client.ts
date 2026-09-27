@@ -2,6 +2,7 @@ import {
   CriterionDetail,
   EvidenceSubmissionRequest,
   EvidenceSubmissionResponse,
+  GoalCompletionResponse,
   GoalDetail,
   GoalSummary,
 } from "@/api/contracts";
@@ -39,6 +40,7 @@ async function request<T>(
   path: string,
   init?: RequestInit,
   acceptedStatuses: number[] = [200],
+  errorMessages: Partial<Record<number, string>> = {},
 ): Promise<T> {
   let response: Response;
 
@@ -58,7 +60,10 @@ async function request<T>(
   }
 
   if (!acceptedStatuses.includes(response.status)) {
-    throw new ApiError(messageForStatus(response.status), response.status);
+    throw new ApiError(
+      errorMessages[response.status] ?? messageForStatus(response.status),
+      response.status,
+    );
   }
 
   try {
@@ -99,5 +104,17 @@ export function submitEvidence(
       body: JSON.stringify(payload),
     },
     [200, 422],
+  );
+}
+
+export function completeGoal(goalId: string) {
+  return request<GoalCompletionResponse>(
+    `/api/goals/${segment(goalId)}/completion`,
+    { method: "POST" },
+    [200],
+    {
+      404: "此 Goal 已不存在或無法取得。",
+      409: "Goal 狀態已變更，目前無法完成。已重新同步最新狀態。",
+    },
   );
 }
