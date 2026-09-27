@@ -56,6 +56,7 @@ type PrimaryButtonProps = {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  loading?: boolean;
 };
 
 export function Screen({ title, subtitle, children, footer }: ScreenProps) {
@@ -154,18 +155,23 @@ export function PrimaryButton({
   label,
   onPress,
   disabled = false,
+  loading = false,
 }: PrimaryButtonProps) {
+  const isDisabled = disabled || loading;
+
   return (
     <Pressable
+      accessibilityState={{ busy: loading, disabled: isDisabled }}
       accessibilityRole="button"
-      disabled={disabled}
+      disabled={isDisabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.primaryButton,
         pressed && styles.primaryButtonPressed,
-        disabled && styles.primaryButtonDisabled,
+        isDisabled && styles.primaryButtonDisabled,
       ]}
     >
+      {loading ? <ActivityIndicator color="#FFFFFF" size="small" /> : null}
       <Text style={styles.primaryButtonText}>{label}</Text>
     </Pressable>
   );
@@ -346,8 +352,10 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     minHeight: 52,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
     paddingHorizontal: 20,
     borderRadius: 12,
     backgroundColor: colors.primary,
