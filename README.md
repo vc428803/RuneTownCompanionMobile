@@ -24,12 +24,12 @@ Run the automated Goal completion regression suite:
 npm test
 ```
 
-The suite covers successful completion, `404`, `409` state resynchronization,
-and network-failure recovery.
+The suite covers Evidence submission and duplicate-submission recovery, plus
+Goal completion, `404`, `409` state resynchronization, and network failures.
 
 ## Backend API
 
-The app uses the four Mobile MVP endpoints documented by the backend contract.
+The app uses the five Mobile MVP endpoints documented by the backend contract.
 Set `EXPO_PUBLIC_API_BASE_URL` when the default URL is not reachable:
 
 ```bash

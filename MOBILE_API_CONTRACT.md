@@ -119,12 +119,13 @@ The Mobile frontend supports these backend values for display:
 - Network failures and unexpected server errors must produce recoverable UI and must not crash the App.
 - Encode path identifiers before placing them in request URLs.
 
-## 6. Known Limitations
+## 6. Persistence and Known Limitations
 
-- Backend state is held in memory; restarting the backend resets runtime changes to the seeded demo data.
+- The production runtime stores Goal, CompletionCriterion, and Supporting Evidence state in PostgreSQL. Reloading the app or restarting the backend does not reset accepted Evidence or Goal lifecycle state.
+- The in-memory GoalRegistry remains a backend test/alternative implementation; the Mobile production flow does not depend on it.
 - There is no authentication or per-user data separation.
-- There is no persistent or offline storage contract for Mobile data.
-- `criterionId` is currently supplied by backend registry mapping rather than stored on the domain CompletionCriterion itself.
+- There is no offline storage or offline synchronization contract for Mobile data.
+- `criterionId` remains an API identifier supplied by the backend registry mapping rather than a field on the domain CompletionCriterion itself.
 - Criterion Detail exposes at most one Supporting Evidence object and no Evidence history.
 - Error responses are not normalized into a dedicated Mobile error DTO.
 
