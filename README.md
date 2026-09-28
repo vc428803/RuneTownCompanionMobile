@@ -16,6 +16,17 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Tests
+
+Run the automated Goal completion regression suite:
+
+```bash
+npm test
+```
+
+The suite covers successful completion, `404`, `409` state resynchronization,
+and network-failure recovery.
+
 ## Backend API
 
 The app uses the four Mobile MVP endpoints documented by the backend contract.

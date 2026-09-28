@@ -48,6 +48,23 @@
 - The Mobile MVP now runs from Goal/Criterion browsing through Evidence submission, `READY_TO_COMPLETE`, formal Goal completion, and the final `COMPLETED` state.
 - Android emulator verification covers the successful end-to-end flow, stale-state `409` resynchronization, and network failure recovery.
 
-### Next step
+## 2026-09-28 — Goal Completion Regression Coverage
 
-- Add automated frontend regression coverage for the Goal completion success, `404`, `409`, and network-failure state transitions.
+### Completed
+
+- Added the Expo SDK 57 Jest setup with React Native Testing Library.
+- Pinned `test-renderer@1.2.0` to match the project's React 19.2 runtime.
+- Added Goal Detail component regression tests for successful completion, `404 Not Found`, `409 Conflict`, and network-failure recovery.
+- Verified that success promotes the displayed Goal to `COMPLETED` without an extra GET.
+- Verified that `404` and network failures keep the confirmation recoverable without changing local Goal state.
+- Verified that `409` triggers a fresh Goal request and renders the authoritative backend status.
+
+### Verification
+
+- Jest: 1 suite, 4 tests passed.
+- Expo lint passes without warnings.
+- TypeScript type checking passes.
+
+### Current State
+
+- The Goal Completion UI, backend integration, emulator flow, and automated regression coverage are complete.
