@@ -1,93 +1,232 @@
-# Welcome to your Expo app 👋
+# RuneTown Companion Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+NEXELYTH Life Progression System 的行動端 MVP。
 
-## Get started
+使用 React Native 與 Spring Boot REST API 整合，提供 Goal 查詢、Evidence 提交與 Goal Completion 等核心流程。
 
-1. Install dependencies
+> 成長來自真實進程，而不是反覆刷取經驗值。
 
-   ```bash
-   npm install
-   ```
+---
 
-2. Start the app
+## 專案簡介
 
-   ```bash
-   npx expo start
-   ```
+RuneTown Companion Mobile 是 NEXELYTH 生態系統的行動端介面。
 
-## Tests
+使用者可透過 App：
 
-Run the automated Goal completion regression suite:
+- 查詢人生目標 (Goal)
+- 檢視完成條件 (Completion Criteria)
+- 提交完成證據 (Evidence)
+- 完成目標流程 (Goal Completion)
 
-```bash
-npm test
+所有領域規則與狀態轉換皆由 Spring Boot Backend 負責，Mobile 專注於 UI、流程控制與狀態同步。
+
+---
+
+## 技術架構
+
+```text
+React Native / Expo
+        │
+        ▼
+TypeScript API Client
+        │
+        ▼
+Spring Boot REST API
+        │
+        ▼
+Goal Domain Model
+        │
+        ▼
+PostgreSQL
 ```
 
-The suite covers Evidence submission and duplicate-submission recovery, plus
-Goal completion, `404`, `409` state resynchronization, and network failures.
+---
 
-## Backend API
+## 核心功能
 
-The app uses the five Mobile MVP endpoints documented by the backend contract.
-Set `EXPO_PUBLIC_API_BASE_URL` when the default URL is not reachable:
+### Goal List
+
+- 查詢目標列表
+- 顯示狀態與完成進度
+
+### Goal Detail
+
+- 查看目標詳細資訊
+- 顯示 Completion Criteria
+- 顯示 Goal 狀態
+
+### Criterion Detail
+
+- 查詢完成條件
+- 查看已接受 Evidence
+
+### Evidence Submission
+
+- 提交完成證據
+- 處理驗證失敗
+- 防止重複提交
+
+### Goal Completion
+
+- 呼叫 Completion API
+- 根據後端結果更新狀態
+- 處理狀態衝突
+
+---
+
+## Domain-driven Goal Lifecycle
+
+Goal 完成流程由 Backend 管理。
+
+```text
+ACTIVE
+   │
+   ▼
+READY_TO_COMPLETE
+   │
+   ▼
+COMPLETED
+```
+
+當所有 Completion Criteria 滿足時：
+
+1. Goal 進入 `READY_TO_COMPLETE`
+2. 使用者發起 Completion
+3. Backend 驗證通過
+4. Goal 轉為 `COMPLETED`
+
+前端不自行推導領域狀態，Backend 為唯一權威來源（Source of Truth）。
+
+---
+
+## 狀態一致性設計
+
+針對 API 回應採取不同策略：
+
+| API 回應 | 處理方式 |
+|-----------|-----------|
+| 200 | 套用後端回傳資料 |
+| 404 | 顯示資源不存在 |
+| 409 | 重新取得最新狀態 |
+| 422 | 顯示驗證失敗訊息 |
+| Network Error | 保留可恢復操作狀態 |
+
+其中 `409 Conflict` 會重新同步 Goal Detail，避免使用過期資料。
+
+---
+
+## 重複提交防護
+
+Evidence Submission 與 Goal Completion 提供：
+
+- Loading State
+- Button Disable
+- Retry 機制
+- Conflict Recovery
+
+避免重複請求造成資料不一致。
+
+---
+
+## 自動化測試
+
+使用：
+
+- Jest
+- React Native Testing Library
+
+測試涵蓋：
+
+- Goal Completion
+- Evidence Submission
+- 404 Not Found
+- 409 Conflict
+- 422 Validation Failure
+- Network Failure
+- Retry Flow
+
+---
+
+## API Integration
+
+| Method | Endpoint |
+|----------|----------|
+| GET | `/api/goals` |
+| GET | `/api/goals/{goalId}` |
+| GET | `/api/goals/{goalId}/criteria/{criterionId}` |
+| POST | `/api/goals/{goalId}/criteria/{criterionId}/evidence` |
+| POST | `/api/goals/{goalId}/completion` |
+
+詳細契約請參考：
+
+```text
+MOBILE_API_CONTRACT.md
+```
+
+---
+
+## 本機執行
 
 ```bash
+npm install
+
 cp .env.example .env.local
+
+npx expo start
 ```
 
-- Android development defaults to `http://127.0.0.1:8080` and expects
-  `adb reverse tcp:8080 tcp:8080`.
-- Without ADB reverse, set Android Emulator to `http://10.0.2.2:8080`.
-- iOS Simulator and web can override the URL with `http://localhost:8080`.
-- A physical device must use the computer's LAN address, for example
-  `http://192.168.1.107:8080`.
-
-Restart or reload Expo after changing the environment variable.
-
-Metro keeps its default port `8081`. If ADB reverse is reset, restore both
-development forwards:
+Android Emulator：
 
 ```bash
 adb reverse tcp:8080 tcp:8080
 adb reverse tcp:8081 tcp:8081
 ```
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+測試：
 
 ```bash
-npm run reset-project
+npm test
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+型別檢查：
 
-### Other setup steps
+```bash
+npx tsc --noEmit
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Lint：
 
-## Learn more
+```bash
+npm run lint
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 已完成
 
-## Join the community
+- Goal / Criterion Query
+- Evidence Submission
+- Goal Completion
+- Typed API Client
+- Error Recovery
+- State Synchronization
+- Automated Testing
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 技術重點
+
+- Domain-driven UI Design
+- REST API Integration
+- Type-safe API Client
+- State Consistency
+- Error Recovery
+- Automated Testing
+- React Native + Spring Boot 全端整合
+
+---
+
+## Backend Repository
+
+https://github.com/vc428803/RuneTownCompanion
